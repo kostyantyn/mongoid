@@ -659,6 +659,23 @@ describe Mongoid::Relations::Accessors do
     end
   end
 
+  describe '#setter' do
+    context 'when has one relation' do
+      context 'with autosave: true' do
+        it 'should correct detach current relation when new one is assigned' do
+          old_lock = DoorLock.new
+          new_lock = DoorLock.new
+
+          door = Door.create(door_lock: old_lock)
+          Door.find(door.id).door_lock = new_lock
+
+          DoorLock.find(old_lock.id).door.should be_nil
+          DoorLock.find(new_lock.id).door.should == door
+        end
+      end
+    end
+  end
+
   context "when setting relations to empty values" do
 
     context "when the document is a referenced in" do
