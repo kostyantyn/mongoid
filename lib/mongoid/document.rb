@@ -10,6 +10,24 @@ module Mongoid
     attr_accessor :criteria_instance_id
     attr_reader :new_record
 
+    def tracker
+      @tracker ||= {}
+    end
+
+    def save(*)
+      tracker.each do |_, relation|
+        if relation
+          if relation.metadata.destructive?
+            relation.send(relation.metadata.dependent)
+          else
+            relation.save if relation.persisted?
+          end
+        end
+      end
+      @tracker = {}
+      super
+    end
+
     # Default comparison is via the string version of the id.
     #
     # @example Compare two documents.

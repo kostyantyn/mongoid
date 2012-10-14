@@ -672,6 +672,50 @@ describe Mongoid::Relations::Accessors do
           DoorLock.find(old_lock.id).door.should be_nil
           DoorLock.find(new_lock.id).door.should == door
         end
+
+        it 'should not detach current relation when new one is invalid' do
+          key  = DoorKey.new(name: 'key1')
+          door = Door.create(door_key: key)
+          door.door_key = DoorKey.new(name: 'key1')
+
+          DoorKey.find(key.id).door.should == door
+        end
+
+        it 'should detach previous relation when new one becomes valid and current object is saved' do
+          old_key = DoorKey.new(name: 'key1')
+          new_key = DoorKey.new
+
+          door = Door.create(door_key: old_key)
+          door.door_key = new_key
+          door.door_key.name = 'key2'
+          door.save
+
+          lambda { DoorKey.find(old_key.id) }.should raise_error(Mongoid::Errors::DocumentNotFound)
+          DoorKey.find(new_key.id).door.should == door
+        end
+
+        it 'should detach previous relation when new one becomes valid and is saved' do
+          old_key = DoorKey.new(name: 'key1')
+          new_key = DoorKey.new
+
+          door = Door.create(door_key: old_key)
+          door.door_key = new_key
+          door.door_key.name = 'key2'
+          door.door_key.save
+
+          lambda { DoorKey.find(old_key.id) }.should raise_error(Mongoid::Errors::DocumentNotFound)
+          DoorKey.find(new_key.id).door.should == door
+        end
+
+        it 'should detach relation when nil was assigned after invalid object' do
+          key = DoorKey.new(name: 'key1')
+
+          door = Door.create(door_key: key)
+          door.door_key = DoorKey.new
+          door.door_key = nil
+
+          lambda { DoorKey.find(key.id) }.should raise_error(Mongoid::Errors::DocumentNotFound)
+        end
       end
     end
   end

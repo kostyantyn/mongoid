@@ -53,13 +53,33 @@ module Mongoid
         def substitute(replacement)
           unbind_one
           if persistable?
-            if metadata.destructive?
-              send(metadata.dependent)
+            if replacement.blank?
+              base.tracker.each do |_, relation|
+                detach_relation(relation)
+              end
+              base.instance_variable_set(:@tracker, {})
+            elsif replacement.valid?
+              detach_relation(target)
             else
-              save if persisted?
+              base.tracker[replacement.id] = target
             end
           end
           One.new(base, replacement, metadata) if replacement
+        end
+
+        def save(*)
+          relation = base.tracker.delete(id)
+          detach_relation(relation) if relation
+
+          super
+        end
+
+        def detach_relation(relation)
+          if relation.metadata.destructive?
+            relation.send(relation.metadata.dependent)
+          else
+            relation.save if relation.persisted?
+          end
         end
 
         private
